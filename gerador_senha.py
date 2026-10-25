@@ -1,8 +1,13 @@
 # Gerador de senhas fortes
-# Feito só com Python, sem instalar nada.
+# Feito só com Python, não precisa instalar nada.
 #
-# O programa NÃO pergunta nada sobre a pessoa. Ele cria senhas aleatórias
-# e garante que a mesma senha nunca seja entregue duas vezes.
+# Como o programa pensa:
+#   1. Ele não pergunta nada sobre você.
+#   2. Ele não guarda as senhas em lugar nenhum. A senha aparece na tela
+#      e, quando você aperta Enter, a tela é limpa.
+#   3. Pra não entregar a mesma senha duas vezes, ele guarda só um
+#      "código" de cada senha (um hash). Com o código não dá pra
+#      descobrir qual era a senha.
 
 import hashlib
 import os
@@ -15,34 +20,37 @@ minusculas = string.ascii_lowercase
 numeros = string.digits
 especiais = "@#$!?*%&-_+="
 
-TAMANHO_MINIMO = 8
+TAMANHO_MINIMO = 12
 TAMANHO_MAXIMO = 64
-TAMANHO_PADRAO = 12
+TAMANHO_PADRAO = 16
 
-pasta = os.path.dirname(os.path.abspath(__file__))
+# Quantas vezes o programa repete a conta que cria o código da senha.
+# É lento de propósito: pra você são uns 0,04 segundo, mas pra quem tentasse
+# adivinhar senhas a partir dos códigos, fica muito mais trabalhoso.
+ITERACOES = 200000
 
-# Arquivo INTERNO: guarda só os "códigos" (hash) das senhas que já foram
-# geradas, para nunca repetir. As senhas NÃO ficam nele.
-ARQUIVO_REGISTRO = os.path.join(pasta, "registro_codigos.txt")
+# O registro fica na pasta pessoal de cada pessoa (ex.: C:\Users\Nome\.gerador_senha)
+# e não na pasta do programa. Assim ele nunca vai parar no GitHub por engano.
+pasta_do_usuario = os.path.join(os.path.expanduser("~"), ".gerador_senha")
+ARQUIVO_REGISTRO = os.path.join(pasta_do_usuario, "registro_codigos.txt")
 
-# nome que esse arquivo tinha antes (usado só para não perder o histórico)
-ARQUIVO_ANTIGO = os.path.join(pasta, "senhas_geradas.txt")
-
-# Arquivo OPCIONAL: só é criado se a pessoa pedir para salvar a senha.
-# Esse sim guarda a senha de verdade, para a pessoa poder consultar.
-ARQUIVO_SENHAS = os.path.join(pasta, "minhas_senhas.txt")
+CABECALHO = (
+    "# Arquivo interno do gerador de senhas. Nao apague e nao compartilhe.\n"
+    "# Aqui ficam so os codigos (hash) das senhas ja geradas, nunca as senhas.\n"
+)
 
 
 # ---------------------------------------------------------------------------
-# Gerando a senha
+# Criando a senha
 # ---------------------------------------------------------------------------
 
 def gerar_senha(tamanho):
     if tamanho < TAMANHO_MINIMO:
         tamanho = TAMANHO_MINIMO
 
-    # começa com 1 de cada tipo, assim a senha sempre cumpre as regras
-    # (usamos "secrets" em vez de "random" porque ele é feito para segurança)
+    # Começa com um caractere de cada tipo, assim a senha sempre tem
+    # maiúscula, minúscula, número e símbolo.
+    # (Usamos "secrets" e não "random" porque o secrets foi feito para segurança.)
     senha = [
         secrets.choice(maiusculas),
         secrets.choice(minusculas),
@@ -50,20 +58,20 @@ def gerar_senha(tamanho):
         secrets.choice(especiais),
     ]
 
-    # o resto é sorteado entre todos os caracteres
+    # O resto das posições é sorteado entre todos os caracteres
     todos = maiusculas + minusculas + numeros + especiais
     while len(senha) < tamanho:
         senha.append(secrets.choice(todos))
 
-    # embaralha, senão as 4 primeiras posições seriam sempre
-    # maiúscula, minúscula, número e símbolo
+    # Embaralha tudo. Se não embaralhasse, os 4 primeiros caracteres seriam
+    # sempre maiúscula, minúscula, número e símbolo, nessa ordem.
     random.SystemRandom().shuffle(senha)
 
     return "".join(senha)
 
 
 def tem_padrao_facil(senha):
-    # procura 3 caracteres seguidos iguais (aaa) ou em sequência (abc, 321)
+    # Procura 3 caracteres seguidos iguais (aaa) ou em sequência (abc, 321)
     for i in range(len(senha) - 2):
         a = senha[i]
         b = senha[i + 1]
@@ -79,78 +87,110 @@ def tem_padrao_facil(senha):
 
 
 # ---------------------------------------------------------------------------
-# Registro: evita que duas pessoas recebam a mesma senha
+# Registro: pra nunca entregar a mesma senha duas vezes
 # ---------------------------------------------------------------------------
 
-def criar_codigo(senha):
-    # transforma a senha num "código" (hash SHA-256).
-    # Não dá para descobrir a senha a partir do código, então o arquivo
-    # pode guardar os códigos sem expor nenhuma senha.
-    return hashlib.sha256(senha.encode("utf-8")).hexdigest()
+def criar_codigo(senha, salt):
+    # Transforma a senha num código (hash PBKDF2-SHA256).
+    # O "salt" é um texto aleatório que cada instalação sorteia uma vez.
+    # Ele faz o código da sua senha ser diferente do código da mesma senha
+    # em outro computador.
+    codigo = hashlib.pbkdf2_hmac(
+        "sha256",
+        senha.encode("utf-8"),
+        bytes.fromhex(salt),
+        ITERACOES,
+    )
+    return codigo.hex()
 
 
-def migrar_registro_antigo(antigo=ARQUIVO_ANTIGO, novo=ARQUIVO_REGISTRO):
-    # se existir o arquivo com o nome antigo, passa ele para o nome novo
-    # (assim as senhas que já foram geradas continuam sendo lembradas)
-    if os.path.exists(antigo) and not os.path.exists(novo):
-        os.rename(antigo, novo)
+def abrir_registro_para_escrever(arquivo):
+    # Cria a pasta do registro se ela ainda não existir (só o dono acessa)
+    pasta = os.path.dirname(arquivo)
+    if pasta != "":
+        os.makedirs(pasta, mode=0o700, exist_ok=True)
+
+    arquivo_novo = not os.path.exists(arquivo)
+
+    # O 0o600 quer dizer: só o dono do arquivo pode ler e escrever.
+    # (Vale no Linux e no Mac. No Windows, quem protege é a sua conta de usuário.)
+    descritor = os.open(arquivo, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+    f = os.fdopen(descritor, "a", encoding="utf-8")
+
+    if arquivo_novo:
+        f.write(CABECALHO)
+    return f
 
 
-def ler_registro(arquivo=ARQUIVO_REGISTRO):
+def ler_linhas_do_registro(arquivo):
+    # Devolve só as linhas que importam (pula as vazias e os comentários com #)
     if not os.path.exists(arquivo):
         return []
 
-    codigos = []
+    linhas = []
     with open(arquivo, "r", encoding="utf-8") as f:
         for linha in f:
             linha = linha.strip()
-            # ignora linhas vazias e os comentários (que começam com #)
             if linha != "" and not linha.startswith("#"):
-                codigos.append(linha)
+                linhas.append(linha)
+    return linhas
+
+
+def ler_salt(arquivo=ARQUIVO_REGISTRO):
+    for linha in ler_linhas_do_registro(arquivo):
+        if linha.startswith("salt="):
+            return linha[5:]
+    return None
+
+
+def garantir_salt(arquivo=ARQUIVO_REGISTRO):
+    # Na primeira vez que o programa roda, sorteia o salt e guarda no registro.
+    # Nas próximas vezes, só usa o que já está lá.
+    salt = ler_salt(arquivo)
+    if salt is None:
+        salt = secrets.token_hex(16)
+        with abrir_registro_para_escrever(arquivo) as f:
+            f.write("salt=" + salt + "\n")
+    return salt
+
+
+def ler_registro(arquivo=ARQUIVO_REGISTRO):
+    # Devolve só os códigos das senhas (sem a linha do salt)
+    codigos = []
+    for linha in ler_linhas_do_registro(arquivo):
+        if not linha.startswith("salt="):
+            codigos.append(linha)
     return codigos
 
 
 def salvar_no_registro(codigo, arquivo=ARQUIVO_REGISTRO):
-    arquivo_novo = not os.path.exists(arquivo)
-    with open(arquivo, "a", encoding="utf-8") as f:
-        if arquivo_novo:
-            f.write("# Arquivo interno do programa. Guarda so os codigos (hash)\n")
-            f.write("# das senhas ja geradas. As senhas NAO ficam aqui.\n")
-            f.write("# Nao apague, senao o programa esquece o que ja gerou.\n")
+    with abrir_registro_para_escrever(arquivo) as f:
         f.write(codigo + "\n")
 
 
 def gerar_senha_unica(tamanho, arquivo=ARQUIVO_REGISTRO):
-    usadas = ler_registro(arquivo)
+    salt = garantir_salt(arquivo)
+    usadas = set(ler_registro(arquivo))
 
     while True:
         senha = gerar_senha(tamanho)
 
-        # senha com padrão fácil: descarta e sorteia outra
+        # Senha com padrão fácil? Joga fora e sorteia outra.
         if tem_padrao_facil(senha):
             continue
 
-        # senha que já foi entregue antes: descarta e sorteia outra
-        codigo = criar_codigo(senha)
+        # Senha que já foi entregue antes? Joga fora e sorteia outra.
+        codigo = criar_codigo(senha, salt)
         if codigo in usadas:
             continue
 
-        # passou nos dois testes: registra e entrega
+        # Passou nos dois testes: guarda o código (só o código) e entrega.
         salvar_no_registro(codigo, arquivo)
         return senha
 
 
 # ---------------------------------------------------------------------------
-# Salvando a senha para a pessoa (opcional)
-# ---------------------------------------------------------------------------
-
-def salvar_senha_em_arquivo(senha, nome, arquivo=ARQUIVO_SENHAS):
-    with open(arquivo, "a", encoding="utf-8") as f:
-        f.write(nome + ": " + senha + "\n")
-
-
-# ---------------------------------------------------------------------------
-# Nível da senha gerada
+# Nível da senha
 # ---------------------------------------------------------------------------
 
 def tem_maiuscula(senha):
@@ -193,7 +233,7 @@ def calcular_nivel(senha):
     if tem_especial(senha):
         pontos = pontos + 1
 
-    # senhas maiores ganham pontos extras
+    # Senhas maiores ganham pontos extras
     if len(senha) >= 12:
         pontos = pontos + 1
     if len(senha) >= 16:
@@ -210,79 +250,73 @@ def calcular_nivel(senha):
 
 
 # ---------------------------------------------------------------------------
-# Parte do terminal
+# Conversa com a pessoa (terminal)
 # ---------------------------------------------------------------------------
+
+def limpar_tela():
+    # Apaga o que está na tela pra senha não ficar à vista de ninguém.
+    # Alguns terminais ainda guardam o histórico mais acima, então se quiser
+    # ter certeza, feche a janela do terminal depois de guardar a senha.
+    if os.name == "nt":
+        os.system("cls")
+    else:
+        os.system("clear")
+
 
 def pedir_tamanho():
     while True:
-        texto = input(f"Tamanho da senha ({TAMANHO_MINIMO} a {TAMANHO_MAXIMO}): ")
+        texto = input(f"Quantos caracteres você quer? ({TAMANHO_MINIMO} a {TAMANHO_MAXIMO}): ")
         if texto.isdigit():
             tamanho = int(texto)
             if tamanho >= TAMANHO_MINIMO and tamanho <= TAMANHO_MAXIMO:
                 return tamanho
-        print(f"Digite um número entre {TAMANHO_MINIMO} e {TAMANHO_MAXIMO}.")
+        print(f"Ops, digite um número entre {TAMANHO_MINIMO} e {TAMANHO_MAXIMO}.")
 
 
 def mostrar_senha(senha):
     print()
     print("=" * 40)
-    print("  SUA SENHA:")
+    print("  PRONTO! SUA SENHA NOVA:")
     print()
     print("    " + senha)
     print()
     print("  Nível:", calcular_nivel(senha))
     print("=" * 40)
-
-
-def oferecer_salvar(senha):
     print()
-    resposta = input("Quer salvar essa senha em um arquivo de texto? (s/n): ")
-    if resposta.strip().lower() != "s":
-        print("Ok, não salvei. Anote a senha agora, ela não fica guardada.")
-        return
-
-    nome = input("Para que é essa senha? (ex: Instagram): ").strip()
-    if nome == "":
-        nome = "sem nome"
-
-    salvar_senha_em_arquivo(senha, nome)
-    print()
-    print("Senha salva em:")
-    print(ARQUIVO_SENHAS)
-    print("Atenção: quem abrir esse arquivo consegue ver a senha.")
+    print("Eu não guardo essa senha em lugar nenhum.")
+    print("Copie agora e guarde num gerenciador de senhas.")
 
 
 def main():
-    migrar_registro_antigo()
-
     print("=" * 40)
     print("      GERADOR DE SENHAS FORTES")
     print("=" * 40)
+    print("Aqui as senhas são criadas na hora e não ficam guardadas.")
 
     tamanho = TAMANHO_PADRAO
 
     while True:
         print()
-        print("Tamanho atual:", tamanho)
+        print("Tamanho atual:", tamanho, "caracteres")
         print("1 - Gerar uma senha")
         print("2 - Mudar o tamanho")
         print("3 - Sair")
-        opcao = input("Escolha: ")
+        opcao = input("O que você quer fazer? ")
 
         if opcao == "1":
             senha = gerar_senha_unica(tamanho)
             mostrar_senha(senha)
-            oferecer_salvar(senha)
             print()
-            input("Aperte Enter para voltar ao menu...")
+            input("Quando já tiver guardado a senha, aperte Enter pra limpar a tela...")
+            limpar_tela()
         elif opcao == "2":
             tamanho = pedir_tamanho()
         elif opcao == "3":
             break
         else:
-            print("Opção inválida.")
+            print("Não entendi, escolha 1, 2 ou 3.")
 
-    print("Até mais!")
+    print("Até a próxima!")
 
 
 if __name__ == "__main__":

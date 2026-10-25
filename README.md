@@ -1,71 +1,115 @@
-# Gerador de Senhas Fortes
+# 🔐 Gerador de Senhas Fortes
 
-Projeto em Python feito para praticar lógica e segurança. Não precisa instalar nenhuma biblioteca.
+Um programa simples, feito em Python, que cria senhas **fortes, aleatórias e que nunca se repetem**. Ele não pede nenhum dado seu e não guarda as senhas que cria.
 
-O programa **não pergunta nada sobre você**. Ele só cria senhas aleatórias, fortes e que nunca se repetem.
+## Por que usar
 
-## O que as senhas têm
+- **Não pergunta nada sobre você.** Nada de nome, data de nascimento, pet ou time. As senhas são sorteadas, então ninguém consegue adivinhar pensando em você.
+- **Não guarda as suas senhas.** Ela aparece na tela, você copia e pronto.
+- **Nunca entrega a mesma senha duas vezes** no seu computador.
+- **Não precisa instalar nada além do Python.**
 
-- de 8 a 64 caracteres (o padrão é 12)
-- letras maiúsculas e minúsculas
-- números
-- caracteres especiais (@ # $ ! ? * % & - _ + =)
-- nada de sequências fáceis, como `aaa`, `abc` ou `321`
+## O que você precisa
 
-Como as senhas são sorteadas, elas não têm relação nenhuma com nome, datas, pets, parentes ou times.
+Só do [Python 3](https://www.python.org/downloads/) instalado. Para saber se você já tem, abra o terminal e digite `python --version` (no Mac e no Linux, `python3 --version`).
 
-## Como rodar
+## Como usar
 
-```
-python gerador_senha.py
-```
+1. Clique no botão verde **Code** no topo desta página e depois em **Download ZIP**. Extraia a pasta.
+2. Abra o terminal dentro da pasta e rode:
 
-Escolha `1` para gerar uma senha, `2` para mudar o tamanho e `3` para sair.
+   ```
+   python gerador_senha.py
+   ```
 
-## Onde aparece a senha
+   (no Mac e no Linux: `python3 gerador_senha.py`)
 
-Ao escolher `1`, a senha aparece **na tela do terminal**, assim:
+3. Escolha uma opção no menu:
 
-```
-========================================
-  SUA SENHA:
+   | Opção | O que faz |
+   |-------|-----------|
+   | `1` | Gera uma senha nova |
+   | `2` | Muda o tamanho da senha |
+   | `3` | Sai do programa |
 
-    uEq*_%a&-q5N
+4. A senha aparece assim:
 
-  Nível: Forte
-========================================
-```
+   ```
+   ========================================
+     PRONTO! SUA SENHA NOVA:
 
-Depois o programa pergunta se você quer salvar a senha em um arquivo de texto. Se responder `s`, ele pergunta para que é a senha (por exemplo, "Instagram") e salva em `minhas_senhas.txt`, mostrando o caminho completo do arquivo. Se responder `n`, a senha não fica guardada em lugar nenhum, então anote.
+       uEq*_%a&-q5N7kP!
 
-Cuidado: quem abrir o `minhas_senhas.txt` consegue ver as senhas. Guarde esse arquivo em um lugar seguro.
+     Nível: Muito forte
+   ========================================
+   ```
 
-## Como evitar senhas iguais
+5. **Copie a senha e guarde num gerenciador de senhas**, como o Bitwarden. Depois aperte Enter e a tela é limpa.
 
-1. O programa sorteia uma senha usando o módulo `secrets` (aleatoriedade própria para segurança).
-2. Transforma a senha em um código (hash SHA-256).
-3. Procura esse código no arquivo `registro_codigos.txt`.
-4. Se o código já existir, descarta a senha e sorteia outra.
-5. Se não existir, guarda o código no arquivo e entrega a senha.
+## Como são as senhas
 
-O `registro_codigos.txt` é um arquivo interno do programa. Ele guarda só os **códigos**, nunca as senhas, então abrir ele não mostra nenhuma senha. Não apague esse arquivo, senão o programa esquece o que já gerou.
+- De **12 a 64 caracteres** (se você não mudar, serão 16)
+- Letras **maiúsculas e minúsculas**
+- **Números**
+- **Símbolos** (`@ # $ ! ? * % & - _ + =`)
+- Sem sequências fáceis como `aaa`, `abc` ou `321`
 
-## Testes
+## Sua privacidade e segurança
+
+**O que o programa faz com a sua senha:** mostra na tela uma vez e mais nada. Ela não é salva em arquivo, não é enviada pela internet e não fica registrada em lugar nenhum. O programa funciona totalmente offline.
+
+**O que fica guardado no seu computador:** só uma lista de códigos, um para cada senha que já foi gerada. Ela serve apenas para o programa não repetir senha. Esses códigos não permitem descobrir as senhas. Ela fica aqui:
+
+- Windows: `C:\Users\SeuNome\.gerador_senha\`
+- Mac e Linux: `~/.gerador_senha/`
+
+Você pode apagar essa pasta quando quiser. O único efeito é o programa esquecer as senhas que já gerou.
+
+**Algumas dicas para usar com segurança:**
+
+- Guarde as senhas num gerenciador de senhas, nunca num bloco de notas ou numa conversa.
+- Gere a senha longe de olhares curiosos, já que ela aparece na tela por alguns instantes.
+- Depois de guardar a senha, feche a janela do terminal. Alguns terminais guardam o histórico mesmo depois de limpar a tela.
+- Use uma senha diferente para cada site ou aplicativo.
+
+<details>
+<summary><b>Detalhes técnicos (para quem tem curiosidade)</b></summary>
+
+- As senhas são sorteadas com o módulo `secrets` do Python, feito para uso em segurança, e não com o `random`.
+- Para evitar repetição, o programa transforma cada senha em um código com **PBKDF2-SHA256**, usando 200 mil repetições e um *salt* aleatório gerado na primeira execução. Só o código vai para o registro, nunca a senha.
+- O registro fica na pasta pessoal do usuário. No Linux e no Mac, a pasta e o arquivo são criados com acesso apenas para o dono (permissões `700` e `600`).
+- O programa só usa a biblioteca padrão do Python, sem dependências externas.
+
+</details>
+
+## Perguntas frequentes
+
+**A senha some depois que aperto Enter?**
+Some da tela, e o programa não tem cópia dela. Por isso é importante guardar antes de continuar.
+
+**Posso receber a mesma senha de novo?**
+No seu computador, não. O programa confere o registro e sorteia outra se a senha já tiver sido gerada.
+
+**E se eu apagar a pasta `.gerador_senha`?**
+Nada grave acontece. O programa só esquece as senhas antigas e cria um registro novo.
+
+**Outra pessoa que use o meu computador consegue ver as minhas senhas?**
+Não. Elas não ficam salvas em lugar nenhum. Ela só veria o registro de códigos, que não revela senha nenhuma.
+
+**Posso usar essas senhas de verdade?**
+Sim. Elas são aleatórias e fortes. Só lembre de guardá-las com segurança.
+
+## Para quem quer contribuir
+
+Para rodar os testes automáticos:
 
 ```
 python test_gerador_senha.py
 ```
 
-## Arquivos
-
-- `gerador_senha.py`: o programa
-- `test_gerador_senha.py`: os testes
-- `registro_codigos.txt`: interno, só com códigos (criado sozinho)
-- `minhas_senhas.txt`: só existe se você pedir para salvar uma senha
-- `README.md`: este arquivo
+Os testes conferem, entre outras coisas, que as senhas nunca repetem, que o registro não guarda a senha, e que o programa não tem nenhuma função para salvar senhas em arquivo. Sugestões e melhorias são bem-vindas.
 
 ## Limitações
 
-- A garantia de não repetir vale para quem usa o **mesmo** arquivo `registro_codigos.txt`. Em computadores separados, cada um teria o seu registro. Para vários computadores seria preciso um banco de dados central.
-- Se o `registro_codigos.txt` for apagado, o programa esquece as senhas antigas.
-- O arquivo `minhas_senhas.txt` guarda as senhas como texto normal, sem proteção. O ideal para guardar senhas é um gerenciador de senhas.
+- A garantia de não repetir vale por computador. Para valer entre pessoas diferentes seria preciso um servidor central.
+- É um projeto de estudo e prática de segurança. Para o dia a dia, um gerenciador de senhas completo continua sendo a melhor opção.

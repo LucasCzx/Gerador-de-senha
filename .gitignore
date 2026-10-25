@@ -1,5 +1,15 @@
+# Arquivos que não devem ir para o GitHub.
+#
+# O registro do programa já fica na pasta pessoal de quem usa (fora do projeto),
+# então estas linhas são só uma proteção extra, caso algum arquivo
+# de registro ou de senhas apareça aqui por engano.
+
 registro_codigos.txt
 senhas_geradas.txt
 minhas_senhas.txt
+.git_backup
+
+
+# Arquivos temporários que o Python cria sozinho
 __pycache__/
 *.pyc
