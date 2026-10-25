@@ -108,8 +108,21 @@ python test_gerador_senha.py
 ```
 
 Os testes conferem, entre outras coisas, que as senhas nunca repetem, que o registro não guarda a senha, e que o programa não tem nenhuma função para salvar senhas em arquivo. Sugestões e melhorias são bem-vindas.
-
+   
 ## Limitações
 
 - A garantia de não repetir vale por computador. Para valer entre pessoas diferentes seria preciso um servidor central.
 - É um projeto de estudo e prática de segurança. Para o dia a dia, um gerenciador de senhas completo continua sendo a melhor opção.
+
+
+## Autor
+
+Feito por **Lucas Carlos** ([@LucasCzx](https://github.com/LucasCzx)), desenvolvedor em formação, com foco em cibersegurança.
+
+Este projeto nasceu como um exercício de lógica e segurança: criar senhas realmente aleatórias, sem depender de dados pessoais, e sem nunca guardá-las. Sugestões e dicas são bem-vindas! Se encontrar algum problema ou tiver uma ideia, é só avisar na aba **Issues** do repositório.
+
+**Tecnologias**
+
+- **Uso:** Python, HTML e CSS
+- **Em construção:** JavaScript
+- **Estudando por fora:** Redes de Computadores, Linux e SQL
